@@ -1,6 +1,27 @@
 import numpy as np
 from scipy.linalg import khatri_rao
 from .utils import cost_fn_efficient
+import cProfile
+import pstats
+import io
+from functools import wraps
+import warnings
+# warnings.simplefilter("error", RuntimeWarning)
+
+def profile_func(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        result = func(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumtime'  # Can also try 'tottime' or 'calls'
+        ps = pstats.Stats(pr, stream=s).strip_dirs().sort_stats(sortby)
+        ps.print_stats(30)  # Show more lines to see inside details
+        print(s.getvalue())
+        return result
+    return wrapper
 
 def ALS(X, y, R, D, reg_lambda=None, max_iter = None, tol=None, verbose=False):
 
@@ -67,6 +88,8 @@ def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
 
     # Initialize factor matrices randomly
     U = [np.random.randn(feature_map_dimension,R) for _ in range(D)]
+    U_alt = [np.zeros((1+(N-1)*(M+1),R)) for _ in range(D)]
+
     # U = []
     # for d in range(D):
     #     U.append(np.zeros((feature_map_dimension, R)))
@@ -121,6 +144,7 @@ def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
             # Save cost
             cost.append(cost_fn_efficient(G_product, H_d, y, reg_lambda=reg_lambda))
 
+
             # Check for convergence
             if iteration > 0:
                 cost_diff = cost[-2] - cost[-1]
@@ -128,10 +152,16 @@ def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
                     if verbose:
                         print(f"Converged in {iteration + 1} iterations.")
                     break
+
+        for d in range(D):
+            U_alt[d][0, :] = W[d][0, :]
+            for n in range(N - 1):
+                U_alt[d][1 + n * (M + 1): 1 + (n + 1) * (M + 1), :] = np.outer(coefficients[n,:], W[d][n+1, :])
     except:
         cost.append(np.inf)
+        # print("Convergence SVD method failed")
+    return U_alt, W, coefficients, cost
 
-    return U, W, coefficients, cost
 
 def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, verbose=False):
     N = int(X.shape[1] / (M+1)) + 1
@@ -140,10 +170,10 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
     feature_mapped_data = np.vstack([(1 / (M + 1)) * np.ones((M + 1, T)), X.T])
 
     cost = []
-    np.seterr(under='warn')
 
     # Initialize factor matrices and coefficient vectors randomly
     U = [np.random.randn(feature_map_dimension,R) for _ in range(D)]  # Just vectors
+    U_alt = [np.zeros((1+ (N-1)*(M+1),R)) for _ in range(D)]  # Just vectors
     W = [np.random.randn(N,R) for _ in range(D)]
     C = [np.random.randn(feature_map_dimension) for _ in range(D)]  # Just vectors
     #C = [np.zeros(feature_map_info['N']*(M+1)) for _ in range(D)]  # Just vectors
@@ -154,12 +184,11 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
         W[d] /= np.linalg.norm(W[d], 'fro')
 
     P = np.ones((R, T))
-    for t in range(T):
-        for index in range(D):
-            vec = np.zeros(R)
-            for n in range(N):
-                vec += W[index][n, :] * (C[index][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
-            P[:, t] *= vec
+    for index in range(D):
+        vec = np.zeros((R,T))
+        for n in range(N):
+            vec += np.outer(W[index][n, :] , (C[index][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),:]) )
+        P *= vec
 
     H = 1
     for index in range(D):
@@ -172,12 +201,19 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
     # Iterate until convergence or max_iter is reached
     for iteration in range(max_iter):
         for d in range(D):
+            #
+            # vec_loop = np.zeros((R, T))
+            # for t in range(T):
+            #     vec = np.zeros(R)
+            #     for n in range(N):
+            #         vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
+            #     P[:,t] /= vec
+            #     vec_loop[:, t] = vec
 
-            for t in range(T):
-                vec = np.zeros(R)
-                for n in range(N):
-                    vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
-                P[:,t] /= vec
+            vec_batch = np.zeros((R,T))
+            for n in range(N):
+                vec_batch += np.outer(W[d][n, :],(C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),:]))
+            P /= vec_batch
 
             UtU = 0
             for n in range(N):
@@ -185,27 +221,27 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
             H /= UtU
 
             for i in range(max_inner_iter):
-                # C[d][M+1:] /= np.linalg.norm(C[d][M+1:])
-                # W[d] /= np.linalg.norm(W[d], 'fro')
 
-                # Update
                 G = np.zeros((T,N*R))
-                for t in range(T):
-                    for n in range(N):
-                        G[t, n*R:(n+1)*R] = (C[d][n*(M+1):(n+1)*(M+1)] @ feature_mapped_data[n*(M+1):(n+1)*(M+1), t]) * P[:, t].T
+                for n in range(N):
+                    G[:, n*R:(n+1)*R] = (C[d][n*(M+1):(n+1)*(M+1)] @ feature_mapped_data[n*(M+1):(n+1)*(M+1), :])[:, np.newaxis] * P.T
 
                 # Solve least squares for W^(d) and apply reg
                 diag = np.diag(np.array([C[d][n*(M+1):(n+1)*(M+1)].T @ C[d][n*(M+1):(n+1)*(M+1)] for n in range(N)]))
                 vec_W_d = np.linalg.lstsq(G.T @ G + reg_lambda * np.kron(diag, H), G.T @ y)[0]
                 W[d] = vec_W_d.copy().reshape((N,R))  # No order f this time
 
-                # latest_cost = np.linalg.norm(G @ vec_W_d - x_n) ** 2 + reg_lambda * vec_W_d.T @ np.kron(diag, H) @ vec_W_d
-
                 # C update
+                # G_old = np.zeros((T, N * (M+1)))
+                # for t in range(T):
+                #     for n in range(N):
+                #         G_old[t, n*(M+1):(n+1)*(M+1)] = (W[d][n,:] @ P[:, t]) * feature_mapped_data[n*(M+1):(n+1)*(M+1),t].T
+
                 G = np.zeros((T, N * (M+1)))
-                for t in range(T):
-                    for n in range(N):
-                        G[t, n*(M+1):(n+1)*(M+1)] = (W[d][n,:] @ P[:, t].T) * feature_mapped_data[n*(M+1):(n+1)*(M+1),t].T
+                for n in range(N):
+                    might_give_underflow = np.vecmat(W[d][n, :], P)[:, np.newaxis]
+                    G[:, n*(M+1):(n+1)*(M+1)] = might_give_underflow * feature_mapped_data[n*(M+1):(n+1)*(M+1),:].T
+
                 diag = np.diag(np.concatenate([np.full(M + 1, W[d][n].T @ H @ W[d][n]) for n in range(N)]))
                 #C[d] = np.linalg.lstsq(G.T @ G + reg_lambda * diag, G.T @ x_n)[0]
                 C[d][M+1:] = np.linalg.lstsq(G[:, M + 1:].T @ G[:, M + 1:] + reg_lambda * diag[M+1:, M+1:], G[:, M + 1:].T @ (y - G[:, :M + 1] @ C[d][:M+1]))[0]
@@ -233,38 +269,24 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
                 W[d] /= np.sqrt(norm)
 
             # Update the P and H efficiently
-            for t in range(T):
-                vec = np.zeros(R)
-                for n in range(N):
-                    vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
-                P[:, t] *= vec
+            # for t in range(T):
+            #     vec = np.zeros(R)
+            #     for n in range(N):
+            #         vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
+            #     P[:, t] *= vec
+
+            vec = np.zeros((R,T))
+            for n in range(N):
+                vec += np.outer(W[d][n, :],(C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),:]))
+            P *= vec
 
             UtU = 0
             for n in range(N):
                 UtU += (C[d][n*(M+1):(n+1)*(M+1)].T @ C[d][n*(M+1):(n+1)*(M+1)]) * np.outer(W[d][n,:], W[d][n,:])
             H *= UtU
 
-        # Save cost
-        # P_total = np.ones((R, T - M))
-        # for t in range(T - M):
-        #     for index in range(D):
-        #         vec = np.zeros(R)
-        #         for n in range(N):
-        #             vec += W[index][n, :] * (C[index][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[
-        #                                                                        n * (M + 1):(n + 1) * (M + 1), t])
-        #         P_total[:, t] *= vec
-        # pred = np.ones(R) @ P_total
-        # H_total = 1
-        # for index in range(D):
-        #     WtW = 0
-        #     for n in range(N):
-        #         WtW += (C[index][n * (M + 1):(n + 1) * (M + 1)].T @ C[index][n * (M + 1):(n + 1) * (M + 1)]) * np.outer(W[index][n, :], W[index][n, :])
-        #     H_total *= WtW
-        # cost = np.linalg.norm(pred - x_n) ** 2 + reg_lambda * np.sum(H_total)
-
-        # cost.append(np.linalg.norm(G @ C[d] - y) ** 2 + reg_lambda * C[d].T @ diag @ C[d])
         cost.append(cost_fn_efficient(P, H, y, reg_lambda=reg_lambda))
-        print(f'Cost for iteration {iteration}: {cost[-1]}')
+        # print(f'Cost for iteration {iteration}: {cost[-1]}')
 
         # Check for convergence
         if iteration > 0:
@@ -276,5 +298,10 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
 
         for d in range(D):
             for n in range(N):
-                U[d][n * (M + 1):(n + 1) * (M + 1), :] = np.outer(C[d][n * (M + 1):(n + 1) * (M + 1)] ,W[d][n, :])
-    return U, W, C, cost
+                U[d][n * (M + 1):(n + 1) * (M + 1), :] = np.outer(C[d][n * (M + 1):(n + 1) * (M + 1)],W[d][n, :])
+
+        for d in range(D):
+            U_alt[d][0,:] = W[d][0, :]
+            for n in range(N-1):
+                U_alt[d][1 + n*(M+1): 1 + (n+1)*(M+1),:] = np.outer(C[d][(1+n)*(M+1):(n+2)*(M+1)],W[d][n+1,:])
+    return U_alt, W, C, cost

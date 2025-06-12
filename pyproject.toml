@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mymlpackage"
-version = "0.1.0"
-description = "My custom ML algorithm with a Scikit-learn interface"
+version = "0.0.1"
+description = "Package for volterra CPD model fitting"
 readme = "README.md"
-authors = [{ name="Your Name", email="your@email.com" }]
+authors = [{ name="Ruben Wijnands", email="R.Wijnands@tudelft.nl" }]
 license = { text = "MIT" }
 dependencies = [
     "numpy",

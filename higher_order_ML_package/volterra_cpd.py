@@ -4,6 +4,23 @@ import numpy as np
 from .estimation import ALS, ALS_SVD, ALS_LR
 
 from multiprocessing import Pool,cpu_count
+import cProfile
+import pstats
+import io
+
+def profile_func(func):
+    def wrapper(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        result = func(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumtime'  # can be 'tottime' or 'calls'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return result
+    return wrapper
 
 
 class VolterraCPD(BaseEstimator):

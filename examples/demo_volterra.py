@@ -1,9 +1,8 @@
-# examples/example_all_models.py
-
 import numpy as np
 import matplotlib.pyplot as plt
 from higher_order_ML_package.volterra_cpd import VolterraCPD, ConstrainedVolterraCPD
 from higher_order_ML_package.utils import plot_graph,get_unique_interactions,gen_ground_truth_interactions,compute_MSE_metric
+
 def generate_synthetic_data(N, T, HOI, SNR=None):
     X = np.random.randn(N-1, T)
     target_node = list(HOI.keys())[0]
@@ -13,10 +12,11 @@ def generate_synthetic_data(N, T, HOI, SNR=None):
         y += np.prod(X[interaction, :], axis=0)
 
     if SNR is not None and SNR != np.inf:
-        sigma = np.sqrt((1 / (N * T)) * np.sum(X**2) / (10**(SNR / 10)))
-        X += np.random.normal(0, sigma, (N, T))
+        sigma = np.sqrt((1 / ((N-1) * T)) * np.sum(X**2) / (10**(SNR / 10)))
+        X += np.random.normal(0, sigma, (N-1, T))
 
     return X.T, y
+
 
 def plot_cost(cost, title):
     plt.figure()
@@ -28,6 +28,7 @@ def plot_cost(cost, title):
     plt.grid(True)
     plt.show()
 
+
 if __name__ == "__main__":
 
     # ----- Shared configuration -----
@@ -35,10 +36,11 @@ if __name__ == "__main__":
         "R": 3,
         "D": 3,
         "M": 1,
-        "runs": 10,
+        "runs": 20,
+        "reg_lambda": 0.001,
         "max_iter": 50,
         "tol": 1e-4,
-        "max_inner_iter": 2,
+        "max_inner_iter": 10,
         "inner_tol": 1e-2,
         "verbose": True,
     }
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     N = 9
     T = 5000
     HOI = {target_node: [[2, 3], [4, 5, 6], [7]]}
-    SNR = None
+    SNR = 5
     X, y = generate_synthetic_data(N=N, T=T, HOI=HOI, SNR=SNR)
 
     # ----- VolterraCPD -----
@@ -57,6 +59,7 @@ if __name__ == "__main__":
         R=params["R"],
         D=params["D"],
         runs=params["runs"],
+        reg_lambda=params["reg_lambda"],
         max_iter=params["max_iter"],
         tol=params["tol"],
         verbose=params["verbose"]
@@ -87,6 +90,7 @@ if __name__ == "__main__":
         M=params["M"],
         algorithm="ALS-LR",
         runs=params["runs"],
+        reg_lambda=params["reg_lambda"],
         max_iter=params["max_iter"],
         tol=params["tol"],
         max_inner_iter=params["max_inner_iter"],
@@ -107,6 +111,7 @@ if __name__ == "__main__":
         M=params["M"],
         algorithm="ALS-SVD",
         runs=params["runs"],
+        reg_lambda=params["reg_lambda"],
         max_iter=params["max_iter"],
         tol=params["tol"],
         verbose=params["verbose"]

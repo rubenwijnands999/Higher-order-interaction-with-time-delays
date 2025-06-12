@@ -52,20 +52,62 @@ def compute_ROC_AUC_metric(interactions,ground_truth):
     return ROC_AUC
 
 
-def gen_ground_truth_interactions(HOI,D,N,weight=1):
+# def gen_ground_truth_interactions(HOI,D,N,weight=1):
+#     """
+#     Generate ground truth from interactions
+#     """
+#     all_interactions_gt = []
+#     for interaction_size in range(1, D + 1):
+#         for interaction in combinations_with_replacement([i for i in range(N) if i != 0], interaction_size):
+#             if list(interaction) in HOI[0]:
+#                 all_interactions_gt.append( (list(interaction),weight) )
+#             else:
+#                 all_interactions_gt.append( (list(interaction),0) )
+#     # add bias term
+#     all_interactions_gt.append((['bias'],0))
+#     return all_interactions_gt
+
+def gen_ground_truth_interactions(HOI,D,N,weight_input=1,C=None):
     """
-    Generate ground truth from interactions
+    Generate ground truth from interactions when we have matrix C as well
     """
+    if C is None:
+        C = np.ones((N,1))
+    M = int(C.shape[1] - 1)
     all_interactions_gt = []
     for interaction_size in range(1, D + 1):
-        for interaction in combinations_with_replacement([i for i in range(N) if i != 0], interaction_size):
-            if list(interaction) in HOI[0]:
-                all_interactions_gt.append( (list(interaction),weight) )
-            else:
-                all_interactions_gt.append( (list(interaction),0) )
+        for interaction in combinations_with_replacement([i for i in range(1, (N-1)*(M+1)+1)], interaction_size):
+            reduced_interaction = [i % (N-1) + 1 if i>= N else i for i in interaction]
+            if 0 not in reduced_interaction:
+                C_index = [i // N for i in interaction]
+                prod = np.prod(C[reduced_interaction,C_index], axis=0)
+                weight = weight_input if list(interaction) in HOI[0] else 0
+                all_interactions_gt.append( (list(interaction),weight * prod) )
     # add bias term
     all_interactions_gt.append((['bias'],0))
     return all_interactions_gt
+
+def reorder_all_weights(weights,C,ALS=False):
+    """
+    Reorder weights to match the ground truth order of the interactions.
+    :param weights:
+    :param M:
+    :return:
+    """
+    N,M = C.shape
+    new_weights = []
+    for i in range(len(weights)):
+        res = []
+        # if not ALS:
+        #     res.append(M*weights[i][0,:][None,:])
+        #     for j in range(M):
+        #         res.append(weights[i][M+j::M,:])
+        # else:
+        res.append(weights[i][0,:][None,:])
+        for j in range(M):
+            res.append(weights[i][1+j::M,:])
+        new_weights.append(np.concatenate(res, axis=0))
+    return new_weights
 
 
 def find_index_permutations(input_list):
