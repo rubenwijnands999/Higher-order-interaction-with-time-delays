@@ -52,21 +52,6 @@ def compute_ROC_AUC_metric(interactions,ground_truth):
     return ROC_AUC
 
 
-# def gen_ground_truth_interactions(HOI,D,N,weight=1):
-#     """
-#     Generate ground truth from interactions
-#     """
-#     all_interactions_gt = []
-#     for interaction_size in range(1, D + 1):
-#         for interaction in combinations_with_replacement([i for i in range(N) if i != 0], interaction_size):
-#             if list(interaction) in HOI[0]:
-#                 all_interactions_gt.append( (list(interaction),weight) )
-#             else:
-#                 all_interactions_gt.append( (list(interaction),0) )
-#     # add bias term
-#     all_interactions_gt.append((['bias'],0))
-#     return all_interactions_gt
-
 def gen_ground_truth_interactions(HOI,D,N,weight_input=1,C=None):
     """
     Generate ground truth from interactions when we have matrix C as well

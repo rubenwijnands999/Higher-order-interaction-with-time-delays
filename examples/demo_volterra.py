@@ -41,7 +41,6 @@ if __name__ == "__main__":
         "max_iter": 50,
         "tol": 1e-4,
         "max_inner_iter": 10,
-        "inner_tol": 1e-2,
         "verbose": True,
     }
 
@@ -80,7 +79,7 @@ if __name__ == "__main__":
         for j in range(params["M"] + 1):
             X_reshaped[:, i*(params["M"]+1) + j] = np.roll(X[:, i], j)
 
-    X_reshaped = X_reshaped[params["M"]:,:]  # Remove the first M rows
+    X_reshaped = X_reshaped[params["M"]:,:]  # Remove the first M rows, because they are not valid for the M lags
     y = y[params["M"]:]  # Adjust y accordingly
 
     print("=== ConstrainedVolterraCPD (ALS-LR) ===")
@@ -94,7 +93,6 @@ if __name__ == "__main__":
         max_iter=params["max_iter"],
         tol=params["tol"],
         max_inner_iter=params["max_inner_iter"],
-        inner_tol=params["inner_tol"],
         verbose=params["verbose"]
     )
     constrained_lr_model.fit(X_reshaped, y)

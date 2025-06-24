@@ -3,13 +3,16 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mymlpackage"
+name = "volterra-cpd"
 version = "0.0.1"
 description = "Package for volterra CPD model fitting"
 readme = "README.md"
-authors = [{ name="Ruben Wijnands", email="R.Wijnands@tudelft.nl" }]
+authors = [{ name="Ruben Wijnands", email="rubenwijnands999@gmail.com" }]
 license = { text = "MIT" }
 dependencies = [
     "numpy",
-    "scikit-learn"
+    "scikit-learn",
+    "scipy",
+    "matplotlib",
+    "networkx"
 ]

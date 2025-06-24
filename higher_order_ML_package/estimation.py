@@ -1,34 +1,11 @@
 import numpy as np
 from scipy.linalg import khatri_rao
 from .utils import cost_fn_efficient
-import cProfile
-import pstats
-import io
-from functools import wraps
-import warnings
-# warnings.simplefilter("error", RuntimeWarning)
-
-def profile_func(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        pr = cProfile.Profile()
-        pr.enable()
-        result = func(*args, **kwargs)
-        pr.disable()
-        s = io.StringIO()
-        sortby = 'cumtime'  # Can also try 'tottime' or 'calls'
-        ps = pstats.Stats(pr, stream=s).strip_dirs().sort_stats(sortby)
-        ps.print_stats(30)  # Show more lines to see inside details
-        print(s.getvalue())
-        return result
-    return wrapper
 
 def ALS(X, y, R, D, reg_lambda=None, max_iter = None, tol=None, verbose=False):
 
     X_feature_mapped = np.vstack([np.ones((1, len(y))), X.T])
     feature_map_dimension = X_feature_mapped.shape[0]
-
-    np.seterr(under='warn')
 
     # Initialize factor matrices randomly
     W = [np.random.randn(feature_map_dimension,R) for _ in range(D)]
@@ -72,6 +49,7 @@ def ALS(X, y, R, D, reg_lambda=None, max_iter = None, tol=None, verbose=False):
                 break
     return W, cost
 
+
 def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
     N = int(X.shape[1] / (M+1)) + 1
     T = len(y)
@@ -79,8 +57,6 @@ def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
     feature_mapped_data = np.vstack([(1 / (M + 1)) * np.ones((M + 1, T)), X.T])
 
     cost = []
-    np.seterr(under='warn')
-
     coefficients = np.zeros((N-1, M+1))
     W = []
     for d in range(D):
@@ -158,12 +134,12 @@ def ALS_SVD(X, y, R, D, M, reg_lambda, max_iter, tol, verbose=False):
             for n in range(N - 1):
                 U_alt[d][1 + n * (M + 1): 1 + (n + 1) * (M + 1), :] = np.outer(coefficients[n,:], W[d][n+1, :])
     except:
+        # Sometimes the SVD method fails to converge
         cost.append(np.inf)
-        # print("Convergence SVD method failed")
     return U_alt, W, coefficients, cost
 
 
-def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, verbose=False):
+def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, verbose=False):
     N = int(X.shape[1] / (M+1)) + 1
     T = len(y)
     feature_map_dimension = N * (1 + M)
@@ -176,11 +152,10 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
     U_alt = [np.zeros((1+ (N-1)*(M+1),R)) for _ in range(D)]  # Just vectors
     W = [np.random.randn(N,R) for _ in range(D)]
     C = [np.random.randn(feature_map_dimension) for _ in range(D)]  # Just vectors
-    #C = [np.zeros(feature_map_info['N']*(M+1)) for _ in range(D)]  # Just vectors
 
     for d in range(D):
         C[d][:M+1] = 1
-        #C[d][M+1::2] = 1
+        #C[d][M+1::2] = 1  # used for testing
         W[d] /= np.linalg.norm(W[d], 'fro')
 
     P = np.ones((R, T))
@@ -201,15 +176,6 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
     # Iterate until convergence or max_iter is reached
     for iteration in range(max_iter):
         for d in range(D):
-            #
-            # vec_loop = np.zeros((R, T))
-            # for t in range(T):
-            #     vec = np.zeros(R)
-            #     for n in range(N):
-            #         vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
-            #     P[:,t] /= vec
-            #     vec_loop[:, t] = vec
-
             vec_batch = np.zeros((R,T))
             for n in range(N):
                 vec_batch += np.outer(W[d][n, :],(C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),:]))
@@ -231,34 +197,19 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
                 vec_W_d = np.linalg.lstsq(G.T @ G + reg_lambda * np.kron(diag, H), G.T @ y)[0]
                 W[d] = vec_W_d.copy().reshape((N,R))  # No order f this time
 
-                # C update
-                # G_old = np.zeros((T, N * (M+1)))
-                # for t in range(T):
-                #     for n in range(N):
-                #         G_old[t, n*(M+1):(n+1)*(M+1)] = (W[d][n,:] @ P[:, t]) * feature_mapped_data[n*(M+1):(n+1)*(M+1),t].T
-
                 G = np.zeros((T, N * (M+1)))
                 for n in range(N):
                     might_give_underflow = np.vecmat(W[d][n, :], P)[:, np.newaxis]
                     G[:, n*(M+1):(n+1)*(M+1)] = might_give_underflow * feature_mapped_data[n*(M+1):(n+1)*(M+1),:].T
 
                 diag = np.diag(np.concatenate([np.full(M + 1, W[d][n].T @ H @ W[d][n]) for n in range(N)]))
-                #C[d] = np.linalg.lstsq(G.T @ G + reg_lambda * diag, G.T @ x_n)[0]
                 C[d][M+1:] = np.linalg.lstsq(G[:, M + 1:].T @ G[:, M + 1:] + reg_lambda * diag[M+1:, M+1:], G[:, M + 1:].T @ (y - G[:, :M + 1] @ C[d][:M+1]))[0]
 
-                # Normalize blocks?
+                # Normalize blocks
                 for n in range(1,N):
                     norm = np.linalg.norm(C[d][n*(M+1):(n+1)*(M+1)])
                     C[d][n*(M+1):(n+1)*(M+1)] /= norm
                     W[d][n,:] *= norm
-
-                #C[d] /= np.linalg.norm(C[d])
-                # C[d][M+1:] /= np.linalg.norm(C[d][M+1:])
-                #cost = np.linalg.norm(G @ C[d] - x_n) ** 2 + reg_lambda * C[d].T @ diag @ C[d]
-                #print(f'Inner iteration cost for iteration {iteration}: {cost}')
-                # Check tolerance
-                # if np.linalg.norm(W[d] - vec_W_d.reshape((I,R))) < estimation_info['inner_tol']:
-                #     break
 
             # Normalization on full updated factor matrix
             if d!=D-1:
@@ -267,13 +218,6 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
                     # Compute the frob norm of U[d]
                     norm += np.linalg.norm(W[d][n, :])**2 * np.linalg.norm(C[d][n * (M + 1):(n + 1) * (M + 1)])**2
                 W[d] /= np.sqrt(norm)
-
-            # Update the P and H efficiently
-            # for t in range(T):
-            #     vec = np.zeros(R)
-            #     for n in range(N):
-            #         vec += W[d][n, :] * (C[d][n * (M + 1):(n + 1) * (M + 1)] @ feature_mapped_data[n * (M + 1):(n + 1) * (M + 1),t])
-            #     P[:, t] *= vec
 
             vec = np.zeros((R,T))
             for n in range(N):
@@ -286,7 +230,6 @@ def ALS_LR(X, y, R, D, M, reg_lambda, max_iter, tol, max_inner_iter, inner_tol, 
             H *= UtU
 
         cost.append(cost_fn_efficient(P, H, y, reg_lambda=reg_lambda))
-        # print(f'Cost for iteration {iteration}: {cost[-1]}')
 
         # Check for convergence
         if iteration > 0:

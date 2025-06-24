@@ -55,7 +55,6 @@ def run_experiment(SNR_vals, T_vals, params, N, HOI, C, num_repeats=5):
                             R=params["R"], D=params["D"], M=params["M"],reg_lambda=params["reg_lambda"],  algorithm="ALS-LR",
                             runs=params["runs"], max_iter=params["max_iter"], tol=params["tol"],
                             max_inner_iter=params["max_inner_iter"],
-                            inner_tol=params["inner_tol"],
                             verbose=False
                         )
                         model.fit(X_constr, y)
@@ -195,6 +194,13 @@ def plot_results(results_df, T_vals, save_dir=None):
         plt.show()
 
 if __name__ == "__main__":
+
+    ''' 
+    This script runs a simulation comparing estimation accuracy of different methods for estimating higher-order interactions.
+    It generates synthetic data based on specified parameters, runs the VolterraCPD and ConstrainedVolterraCPD methods,
+    and saves the results including MSE and runtime for each method across different SNR and number of samples (T) values.
+    '''
+
     params = {
         "R": 3,
         "D": 3,
@@ -204,7 +210,6 @@ if __name__ == "__main__":
         "max_iter": 50,
         "tol": 1e-4,
         "max_inner_iter": 2,
-        "inner_tol": 1e-2,
         "verbose": False,
     }
 
@@ -223,17 +228,15 @@ if __name__ == "__main__":
     sim_ID = None
 
     if not sim_ID:
-        # ==== RUN SIMULATION
+        # ==== RUN SIMULATION ====
         print("=== Running Simulation ===")
         indep_model_param_naive = int(comb(N * (params['M'] + 1) + params['D'] - 1, params['D']))
         indep_model_param_efficient = int(comb(N + params['D'] - 1, params['D'] ) + params['D']*N*params['M'])
         print('Number of independent parameters naive case:',indep_model_param_naive)
         print('Number of independent parameters efficient case:',indep_model_param_efficient)
 
-        # results, timing_df = run_experiment(SNR_vals, T_vals, params, N, HOI, C)
-        results = run_experiment(SNR_vals, T_vals, params, N, HOI, C, num_repeats=10)
-
         sim_dir, sim_id = create_simulation_dir()
+        results = run_experiment(SNR_vals, T_vals, params, N, HOI, C, num_repeats=10)
 
         # Save results
         with open(os.path.join(sim_dir, "results.pkl"), "wb") as f:
