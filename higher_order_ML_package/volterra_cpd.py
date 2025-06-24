@@ -6,7 +6,6 @@ from multiprocessing import Pool,cpu_count
 
 class VolterraCPD(BaseEstimator):
     def __init__(self, R=3, D=3, reg_lambda=0.001, max_iter=100, runs=1, tol=1e-4, verbose=False):
-
         self.R = R
         self.D = D
         self.reg_lambda = reg_lambda
@@ -36,7 +35,7 @@ class VolterraCPD(BaseEstimator):
         return self
 
     def predict(self, X_new):
-        feature_mapped_data = np.vstack([(1 / (self.M + 1)) * np.ones((self.M + 1, X_new.shape[0])), X_new.T])
+        feature_mapped_data = np.vstack([np.ones((1, X_new.shape[0])), X_new.T])
         prod = 1
         for d in range(self.D):
             prod *= self.weights_[d].T @ feature_mapped_data
