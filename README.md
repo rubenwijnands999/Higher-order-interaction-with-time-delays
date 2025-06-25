@@ -6,13 +6,22 @@ Tensor regression assuming the model weights follow a CP-model.
 This package provides tools for tensor kernel regression using a CP (CANDECOMP/PARAFAC) model for the weights. It is designed for higher-order interaction modeling, such as Volterra series, and includes efficient estimation routines and utilities for model evaluation.
 
 ## Installation
-Install the package
+
+### From PyPI (Recommended)
+```bash
+pip install higher-order-ml-package
+```
+
+### From Source (Development)
+For local development or latest features:
 
 ```bash
 git clone https://github.com/rubenwijnands999/PhD-package.git
 cd PhD-package
 pip install -e .
 ```
+
+**Note**: The local installation will automatically install all required dependencies (numpy, scikit-learn, scipy, matplotlib, networkx, pandas).
 
 ## Usage Example
 Here is a minimal example using the VolterraCPD model:
