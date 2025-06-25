@@ -6,17 +6,11 @@ Tensor regression assuming the model weights follow a CP-model.
 This package provides tools for tensor kernel regression using a CP (CANDECOMP/PARAFAC) model for the weights. It is designed for higher-order interaction modeling, such as Volterra series, and includes efficient estimation routines and utilities for model evaluation.
 
 ## Installation
-Install the package using pip:
+Install the package
 
 ```bash
-pip install volterra-cpd
-```
-
-Or, for local development:
-
-```bash
-git clone https://github.com/rubenwijnands999/volterra-cpd.git
-cd volterra-cpd
+git clone https://github.com/rubenwijnands999/PhD-package.git
+cd PhD-package
 pip install -e .
 ```
 
@@ -116,7 +110,7 @@ model_lr = ConstrainedVolterraCPD(
     algorithm="ALS-LR",     # Algorithm choice
     reg_lambda=0.001,       # Regularization
     max_iter=100,           # Maximum iterations
-    max_inner_iter=10,      # Inner iterations for ALS-LR
+    max_inner_iter=2,      # Inner iterations for ALS-LR
     runs=5,                 # Multiple random initializations
     verbose=True
 )

@@ -1,1 +1,1 @@
-from .volterra_cpd import VolterraCPD
+from .volterra_cpd import VolterraCPD, ConstrainedVolterraCPD
