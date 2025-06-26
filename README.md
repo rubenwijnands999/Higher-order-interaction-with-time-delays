@@ -7,25 +7,6 @@ This package provides tools for tensor kernel regression using a CP (CANDECOMP/P
 
 ## Installation
 
-### From PyPI (Recommended)
-
-**Step 1: Create and activate a virtual environment (recommended)**
-```bash
-# Create a new virtual environment
-python3 -m venv venv
-
-# Activate the virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-# venv_volterra_cpd\Scripts\activate
-```
-
-**Step 2: Install the package**
-```bash
-pip install higher-order-ml-package
-```
-
 ### From Source (Development)
 For local development or latest features:
 
