@@ -3,7 +3,9 @@
 Tensor regression assuming the model weights follow a CP-model.
 
 ## Overview
-This package provides tools for tensor kernel regression using a CP (CANDECOMP/PARAFAC) model for the weights. It is designed for higher-order interaction modeling, such as Volterra series, and includes efficient estimation routines and utilities for model evaluation.
+This package provides tools for tensor kernel regression using a CP (CANDECOMP/PARAFAC) model for the weights. It is designed for higher-order interaction modeling, such as Volterra series, and includes efficient estimation routines and utilities for model evaluation. Additionally, two algorithms allow to constrain the structure of the factor matrices, useful when considering e.g. delayed observations.
+
+For detailed mathematical background and theoretical foundations, see: [HOI_TIME_DELAYS.pdf](HOI_TIME_DELAYS.pdf)
 
 ## Installation
 
