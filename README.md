@@ -12,13 +12,13 @@ This package provides tools for tensor kernel regression using a CP (CANDECOMP/P
 **Step 1: Create and activate a virtual environment (recommended)**
 ```bash
 # Create a new virtual environment
-python -m venv volterra_env
+python3 -m venv venv_volterra_cpd
 
 # Activate the virtual environment
 # On macOS/Linux:
-source volterra_env/bin/activate
+source venv_volterra_cpd/bin/activate
 # On Windows:
-# volterra_env\Scripts\activate
+# venv_volterra_cpd\Scripts\activate
 ```
 
 **Step 2: Install the package**
@@ -29,22 +29,26 @@ pip install higher-order-ml-package
 ### From Source (Development)
 For local development or latest features:
 
-**Step 1: Create and activate a virtual environment (recommended)**
-```bash
-# Create a new virtual environment
-python -m venv volterra_env
-
-# Activate the virtual environment
-# On macOS/Linux:
-source volterra_env/bin/activate
-# On Windows:
-# volterra_env\Scripts\activate
-```
-
-**Step 2: Clone and install**
+**Step 1: Clone the repository**
 ```bash
 git clone https://github.com/rubenwijnands999/PhD-package.git
 cd PhD-package
+```
+
+**Step 2: Create and activate a virtual environment**
+```bash
+# Create a new virtual environment in the project folder
+python3 -m venv venv
+
+# Activate the virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+# venv\Scripts\activate
+```
+
+**Step 3: Install the package in development mode**
+```bash
 pip install -e .
 ```
 
