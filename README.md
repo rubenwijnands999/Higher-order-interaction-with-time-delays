@@ -12,11 +12,11 @@ This package provides tools for tensor kernel regression using a CP (CANDECOMP/P
 **Step 1: Create and activate a virtual environment (recommended)**
 ```bash
 # Create a new virtual environment
-python3 -m venv venv_volterra_cpd
+python3 -m venv venv
 
 # Activate the virtual environment
 # On macOS/Linux:
-source venv_volterra_cpd/bin/activate
+source venv/bin/activate
 # On Windows:
 # venv_volterra_cpd\Scripts\activate
 ```
